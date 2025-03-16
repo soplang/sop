@@ -16,9 +16,22 @@ pub struct SopToml {
 pub struct ProjectConfig {
     pub name: String,
     pub version: String,
-    pub description: Option<String>,
-    pub author: Option<String>,
-    pub entry: Option<String>,
+    pub status: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub license: String,
+    #[serde(default)]
+    pub author: String,
+    #[serde(default)]
+    pub repository: String,
+    #[serde(default)]
+    pub homepage: String,
+    pub entry: String,
+    #[serde(default)]
+    pub keywords: Vec<String>,
+    #[serde(default)]
+    pub categories: Vec<String>,
 }
 
 /// Read and parse a sop.toml file
@@ -44,10 +57,16 @@ pub fn create_default_config(name: &str) -> SopToml {
     SopToml {
         project: ProjectConfig {
             name: name.to_string(),
-            version: "0.1.0".to_string(),
-            description: Some("A Soplang project".to_string()),
-            author: None,
-            entry: Some("src/main.so".to_string()),
+            version: "1.0.0".to_string(),
+            status: "stable".to_string(),
+            description: String::new(),
+            license: String::new(),
+            author: String::new(),
+            repository: String::new(),
+            homepage: String::new(),
+            entry: "src/main.so".to_string(),
+            keywords: Vec::new(),
+            categories: Vec::new(),
         },
         dependencies: Some(HashMap::new()),
     }
