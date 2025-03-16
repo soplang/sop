@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use dialoguer::{Confirm, Input};
+use dialoguer::{Confirm, Input, Select};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -9,6 +9,9 @@ use crate::utils::{ensure_dir_exists, file_exists, get_sop_toml_path, get_src_pa
 
 /// Execute the init command
 pub fn execute(yes: bool) -> Result<()> {
+    // Print explanation
+    println!("Initializing a new Soplang project.");
+
     // Check if current directory is empty
     let current_dir = env::current_dir()?;
     let entries: Vec<_> = fs::read_dir(&current_dir)?.collect::<Result<Vec<_>, _>>()?;
@@ -21,42 +24,69 @@ pub fn execute(yes: bool) -> Result<()> {
 
     let project_dir: PathBuf;
     let project_name: String;
+    let in_current_dir: bool;
 
-    if is_empty {
-        // Current directory is empty, initialize here
-        project_dir = current_dir;
+    if yes {
+        // In -y mode, if directory is empty use current dir
+        project_dir = current_dir.clone();
         project_name = project_dir
             .file_name()
             .ok_or_else(|| anyhow!("Unable to determine current directory name"))?
             .to_string_lossy()
             .to_string();
+        in_current_dir = true;
     } else {
-        // Current directory is not empty, ask for a folder name
-        project_name = Input::new()
-            .with_prompt(
-                "Current directory is not empty. Enter a new directory name for the project",
-            )
+        // In interactive mode, ask for project name
+        let current_dir_name = current_dir
+            .file_name()
+            .ok_or_else(|| anyhow!("Unable to determine current directory name"))?
+            .to_string_lossy()
+            .to_string();
+
+        let name_prompt = "Project name? (Enter a name, or '.' for current directory)";
+        let input = Input::new()
+            .with_prompt(name_prompt)
+            .default(current_dir_name)
             .interact_text()?;
 
-        project_dir = current_dir.join(&project_name);
-
-        if project_dir.exists() {
-            if !Confirm::new()
-                .with_prompt(format!(
-                    "Directory '{}' already exists. Do you want to overwrite it?",
-                    project_name
-                ))
-                .default(false)
-                .interact()?
-            {
-                return Err(anyhow!("Initialization aborted."));
+        if input == "." || input == "./" {
+            // User wants to use current directory
+            if !is_empty {
+                return Err(anyhow!("Current directory is not empty. Please enter a project name or empty the directory."));
             }
-            // If confirmed, delete the existing directory
-            fs::remove_dir_all(&project_dir)?;
-        }
 
-        // Create the project directory
-        fs::create_dir_all(&project_dir)?;
+            // Current directory is empty, initialize here
+            project_dir = current_dir.clone();
+            project_name = project_dir
+                .file_name()
+                .ok_or_else(|| anyhow!("Unable to determine current directory name"))?
+                .to_string_lossy()
+                .to_string();
+            in_current_dir = true;
+        } else {
+            // User specified a project name, create a new directory
+            project_name = input;
+            project_dir = current_dir.join(&project_name);
+            in_current_dir = false;
+
+            if project_dir.exists() {
+                if !Confirm::new()
+                    .with_prompt(format!(
+                        "Directory '{}' already exists. Do you want to overwrite it?",
+                        project_name
+                    ))
+                    .default(false)
+                    .interact()?
+                {
+                    return Err(anyhow!("Initialization aborted."));
+                }
+                // If confirmed, delete the existing directory
+                fs::remove_dir_all(&project_dir)?;
+            }
+
+            // Create the project directory
+            fs::create_dir_all(&project_dir)?;
+        }
     }
 
     // Change to the project directory
@@ -77,7 +107,7 @@ pub fn execute(yes: bool) -> Result<()> {
 
     // Create the project configuration
     let config = if yes {
-        // Use default values if -y flag is provided (only in empty directory)
+        // Use default values if -y flag is provided
         create_default_project(&project_name)?
     } else {
         // Ask for project details interactively
@@ -100,7 +130,7 @@ pub fn execute(yes: bool) -> Result<()> {
         config.project.name
     );
     println!("Created:");
-    if !is_empty {
+    if !in_current_dir {
         println!("  {}/", project_name);
     }
     println!("  sop.toml");
@@ -109,13 +139,13 @@ pub fn execute(yes: bool) -> Result<()> {
     Ok(())
 }
 
-/// Create a default project configuration
+/// Create a default project configuration (used with -y flag)
 fn create_default_project(project_name: &str) -> Result<SopToml> {
     Ok(SopToml {
         project: ProjectConfig {
             name: project_name.to_string(),
             version: "1.0.0".to_string(),
-            status: "stable".to_string(),
+            status: "experimental".to_string(), // Changed from "stable" to "experimental"
             description: String::new(),
             license: String::new(),
             author: String::new(),
@@ -131,20 +161,24 @@ fn create_default_project(project_name: &str) -> Result<SopToml> {
 
 /// Create a project configuration interactively
 fn create_interactive_project(default_name: &str) -> Result<SopToml> {
-    let name: String = Input::new()
-        .with_prompt("Project name")
-        .default(default_name.to_string())
-        .interact_text()?;
+    // We don't need to ask for project name again, use the one already provided
+    let name = default_name.to_string();
+
+    println!("Press Enter to skip optional fields and use defaults:");
 
     let version: String = Input::new()
-        .with_prompt("Version")
+        .with_prompt("Version (1.0.0)")
+        .allow_empty(true)
         .default("1.0.0".to_string())
         .interact_text()?;
+    let version = if version.is_empty() {
+        "1.0.0".to_string()
+    } else {
+        version
+    };
 
-    let status: String = Input::new()
-        .with_prompt("Status")
-        .default("stable".to_string())
-        .interact_text()?;
+    // In interactive mode, default to "experimental"
+    let status = "experimental".to_string();
 
     let description: String = Input::new()
         .with_prompt("Description")
