@@ -74,11 +74,7 @@ impl Cli {
             Some(Commands::Add { package, version }) => commands::add::execute(package, version),
             Some(Commands::Remove { package }) => commands::remove::execute(package),
             Some(Commands::Run { script }) => commands::run::execute(script),
-            Some(Commands::Update { package }) => {
-                println!("Command 'update' not yet implemented");
-                // Will call commands::update::execute(package) once implemented
-                Ok(())
-            }
+            Some(Commands::Update { package }) => commands::update::execute(package),
             Some(Commands::List) => {
                 println!("Command 'list' not yet implemented");
                 // Will call commands::list::execute() once implemented
