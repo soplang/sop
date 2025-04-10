@@ -70,16 +70,8 @@ impl Cli {
     pub fn execute(&self) -> Result<()> {
         match &self.command {
             Some(Commands::Init { yes }) => commands::init::execute(*yes),
-            Some(Commands::Setup) => {
-                println!("Command 'setup' not yet implemented");
-                // Will call commands::setup::execute() once implemented
-                Ok(())
-            }
-            Some(Commands::Add { package, version }) => {
-                println!("Command 'add' not yet implemented");
-                // Will call commands::add::execute(package, version) once implemented
-                Ok(())
-            }
+            Some(Commands::Setup) => commands::setup::execute(),
+            Some(Commands::Add { package, version }) => commands::add::execute(package, version),
             Some(Commands::Remove { package }) => {
                 println!("Command 'remove' not yet implemented");
                 // Will call commands::remove::execute(package) once implemented
