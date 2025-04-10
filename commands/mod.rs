@@ -4,6 +4,6 @@
 // Each command will be implemented in a separate file and exposed here.
 pub mod add;
 pub mod init;
+pub mod remove;
 pub mod setup;
-// pub mod remove;
 // etc.
